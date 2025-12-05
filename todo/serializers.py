@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from users.models import CustomUser
 from users.serializers import CustomUserSerializer
 
 from .models import TaskModel, TrackModel
@@ -15,7 +14,7 @@ class CreateTrackSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "owner"]
 
     def create(self, validated_data) -> TrackModel:
-        owner = self.context.get("request").user
+        owner = self.context.get("owner")
         track = (
             TrackModel.objects.create(  # pyright: ignore[reportAttributeAccessIssue]
                 owner=owner, **validated_data
@@ -33,11 +32,13 @@ class TrackSerializer(serializers.ModelSerializer):
 class CreateTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskModel
-        fields = ["title", "date", "category", "important"]
+        fields = ["id", "title", "date", "category", "important"]
+        read_only_fields = ["id"]
 
     def create(self, validated_data) -> TaskModel:
+        track_instance = self.context.get("track_instance")
         task = TaskModel.objects.create(  # pyright: ignore[reportAttributeAccessIssue]
-            **validated_data
+            track=track_instance, **validated_data
         )
         return task
 
@@ -45,4 +46,4 @@ class CreateTaskSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskModel
-        fields = ["all"]
+        fields = "__all__"

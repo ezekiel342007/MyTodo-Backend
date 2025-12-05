@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from django.db import models
+from django.utils import timezone
 
 from users.models import CustomUser
 
@@ -21,13 +22,14 @@ class TaskModel(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     title = models.CharField(max_length=100)
-    date = models.DateField()
+    date = models.DateField(default=timezone.now())
     category = models.CharField(
         max_length=4, choices=CategoryOptions.choices, default=CategoryOptions.WORK
     )
     important = models.BooleanField(
         default=False  # pyright: ignore[reportArgumentType]
     )
+    done = models.BooleanField(default=False)  # pyright: ignore[reportArgumentType]
     track = models.ForeignKey(
         TrackModel, on_delete=models.CASCADE, related_name="tasks"
     )

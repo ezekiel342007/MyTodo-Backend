@@ -1,4 +1,5 @@
 from rest_framework import generics, status
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -16,6 +17,11 @@ class CreateTrack(generics.CreateAPIView):
     queryset = TrackModel.objects.all()  # pyright: ignore[reportAttributeAccessIssue]
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["owner"] = self.request.user
+        return context
+
 
 class SingleTrack(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TrackSerializer
@@ -31,19 +37,85 @@ class Tracks(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class Tasks(APIView):
-    # permission_classes = [IsAuthenticated]
-    def get(self, request: Request, pk: str) -> Response:
-        tasks = TaskModel.objects.filter(  # pyright: ignore[reportAttributeAccessIssue]
-            track__id=pk
-        )  # pyright: ignore[reportAttributeAccessIssue]
-        serializer = TaskSerializer(tasks, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class CreateTasks(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CreateTaskSerializer
 
-    def post(self, request: Request, pk: str) -> Response:
-        serializer = CreateTaskSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        track_id = self.kwargs.get("pk")
+        try:
+            track = (
+                TrackModel.objects.get(  # pyright: ignore[reportAttributeAccessIssue]
+                    id=track_id, owner=self.request.user
+                )
+            )
+        except TrackModel.DoesNotExist:  # pyright: ignore[reportAttributeAccessIssue]
+            raise NotFound(
+                "Track not found or you do not have permission to acccess it"
+            )
 
+        return TaskModel.objects.filter(  # pyright: ignore[reportAttributeAccessIssue]
+            track=track
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        track_id = self.kwargs.get("pk")
+        try:
+            track_instance = (
+                TrackModel.objects.get(  # pyright: ignore[reportAttributeAccessIssue]
+                    id=track_id, owner=self.request.user
+                )
+            )
+            context["track_instance"] = track_instance
+        except TrackModel.DoesNotExist:  # pyright: ignore[reportAttributeAccessIssue]
+            raise NotFound(
+                "Track not found or you do not have permission to acccess it"
+            )
+
+        return context
+
+
+class ListTasks(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+
+    def get_queryset(self):
+        track_id = self.kwargs.get("pk")
+        try:
+            track = (
+                TrackModel.objects.get(  # pyright: ignore[reportAttributeAccessIssue]
+                    id=track_id, owner=self.request.user
+                )
+            )
+        except TrackModel.DoesNotExist:  # pyright: ignore[reportAttributeAccessIssue]
+            raise NotFound(
+                "Track not found or you do not have permission to acccess it"
+            )
+
+        return TaskModel.objects.filter(  # pyright: ignore[reportAttributeAccessIssue]
+            track=track
+        )
+
+
+class SingleTask(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+    lookup_field = "id"
+
+    def get_queryset(self):
+        track_id = self.kwargs.get("pk")
+        try:
+            track = (
+                TrackModel.objects.get(  # pyright: ignore[reportAttributeAccessIssue]
+                    id=track_id, owner=self.request.user
+                )
+            )
+        except TrackModel.DoesNotExist:  # pyright: ignore[reportAttributeAccessIssue]
+            raise NotFound(
+                "Track not found or you do not have permission to acccess it"
+            )
+
+        return TaskModel.objects.filter(  # pyright: ignore[reportAttributeAccessIssue]
+            track=track
+        )
